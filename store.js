@@ -132,6 +132,7 @@ export async function importBackup(data) {
       updatedAt: Number(raw.updatedAt) || Date.now(),
       lastUsedAt: Number(raw.lastUsedAt) || 0,
       uses: Number(raw.uses) || 0,
+      fav: !!raw.fav,
     };
     const prev = existing.get(card.id);
     if (!prev) {

@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Tessere">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -68,9 +68,14 @@
       <svg viewBox="0 0 24 24" class="i22"><path d="m15 5-7 7 7 7"/></svg>
     </button>
     <span class="muted small">Portafoglio</span>
-    <button id="btn-card-menu" class="icon-btn" aria-label="Altre azioni">
-      <svg viewBox="0 0 24 24" class="i20"><circle cx="12" cy="5.5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="18.5" r="1"/></svg>
-    </button>
+    <span class="nav-right">
+      <button id="btn-fav" class="icon-btn" aria-label="Aggiungi ai preferiti" aria-pressed="false">
+        <svg viewBox="0 0 24 24" class="i20 star"><path d="m12 3.6 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.8l5.9-.9z"/></svg>
+      </button>
+      <button id="btn-card-menu" class="icon-btn" aria-label="Altre azioni">
+        <svg viewBox="0 0 24 24" class="i20"><circle cx="12" cy="5.5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="18.5" r="1"/></svg>
+      </button>
+    </span>
   </nav>
 
   <div class="card-body">
@@ -289,14 +294,17 @@
 
 <div id="sheet" class="sheet" hidden>
   <div class="sheet-panel">
+    <button class="sheet-item" data-act="fav">Aggiungi ai preferiti</button>
     <button class="sheet-item" data-act="edit">Modifica tessera</button>
     <button class="sheet-item danger" data-act="delete">Elimina tessera</button>
     <button class="sheet-item cancel" data-act="cancel">Annulla</button>
   </div>
 </div>
 
-<script src="vendor/bwip-js.min.js"></script>
-<script src="vendor/zxing.min.js"></script>
+<!-- Le due librerie pesano 1,4 MB insieme e servono solo per disegnare o
+     leggere un codice: caricarle all'avvio rallentava ogni apertura dell'app,
+     soprattutto installata, dove riparte da zero più spesso. Ora le carica
+     codes.js quando servono davvero. -->
 <script type="module" src="app.js"></script>
 </body>
 </html>

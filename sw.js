@@ -1,7 +1,7 @@
 // Service worker: l'app deve aprirsi anche senza rete, perché il momento
 // in cui serve è la cassa del supermercato, dove il telefono non prende.
 
-const VERSION = 'tessere-v2';
+const VERSION = 'tessere-v3';
 const SHELL = [
   './',
   'index.html',

@@ -2,10 +2,10 @@ import { CATALOG, PALETTE, findInCatalog } from './catalog.js';
 import * as store from './store.js';
 import {
   FORMATS, formatOf, formatLabel, isTwoD, validate, guessFormat,
-  tryRenderCode, startLiveScan, scanImageFile,
+  tryRenderCode, startLiveScan, scanImageFile, pronteGenerazione,
 } from './codes.js';
 
-const VERSION = '1.0.1';
+const VERSION = '1.2.0';
 const PRIMARY_FORMATS = ['ean13', 'code128', 'code39', 'itf', 'qrcode', 'aztec'];
 
 const $ = (id) => document.getElementById(id);
@@ -144,15 +144,38 @@ function back() {
 
 // --- portafoglio --------------------------------------------------------
 
+const recency = (c) => c.lastUsedAt || c.createdAt || 0;
+
 function visibleCards() {
   const q = query.trim().toLowerCase();
   const list = q
     ? cards.filter((c) =>
         (c.name + ' ' + c.sub + ' ' + c.code + ' ' + (c.note || '')).toLowerCase().includes(q))
     : cards.slice();
-  return list.sort((a, b) =>
-    (b.lastUsedAt || b.createdAt || 0) - (a.lastUsedAt || a.createdAt || 0));
+  // Preferite sopra a tutto; dentro ogni gruppo, l'ultima usata per prima.
+  return list.sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0) || recency(b) - recency(a));
 }
+
+const STAR = '<svg class="tile-star" viewBox="0 0 24 24" fill="currentColor" stroke="none">' +
+  '<path d="m12 3.6 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.8l5.9-.9z"/></svg>';
+
+function tileHTML(c) {
+  const ink = inkFor(c.color);
+  const dark = ink !== '#FFFFFF';
+  return `<button class="tile" data-id="${esc(c.id)}" style="background:${esc(c.color)};color:${ink}">
+      ${c.fav ? STAR : ''}
+      <span class="tile-head">
+        <span class="tile-name">${esc(c.name)}</span>
+        ${c.sub ? `<span class="tile-sub">${esc(c.sub)}</span>` : ''}
+      </span>
+      <span>
+        ${stripSVG(c.code + c.id, dark)}
+        <span class="tile-meta">${esc(formatLabel(c.format))} · ${esc(shortCode(c.code))}</span>
+      </span>
+    </button>`;
+}
+
+const gridHead = (testo) => `<div class="grid-head"><span>${esc(testo)}</span><span class="rule"></span></div>`;
 
 function renderList() {
   const list = visibleCards();
@@ -168,20 +191,16 @@ function renderList() {
   grid.hidden = list.length === 0;
   $('q-clear').hidden = !query;
 
-  grid.innerHTML = list.map((c) => {
-    const ink = inkFor(c.color);
-    const dark = ink !== '#FFFFFF';
-    return `<button class="tile" data-id="${esc(c.id)}" style="background:${esc(c.color)};color:${ink}">
-      <span class="tile-head">
-        <span class="tile-name">${esc(c.name)}</span>
-        ${c.sub ? `<span class="tile-sub">${esc(c.sub)}</span>` : ''}
-      </span>
-      <span>
-        ${stripSVG(c.code + c.id, dark)}
-        <span class="tile-meta">${esc(formatLabel(c.format))} · ${esc(shortCode(c.code))}</span>
-      </span>
-    </button>`;
-  }).join('');
+  const fav = list.filter((c) => c.fav);
+  const altre = list.filter((c) => !c.fav);
+
+  // Le intestazioni compaiono solo quando servono davvero a separare due
+  // gruppi: con sole preferite, o senza nessuna, sarebbero rumore.
+  const sezioni = fav.length && altre.length;
+  grid.innerHTML = sezioni
+    ? gridHead('Preferite') + fav.map(tileHTML).join('') +
+      gridHead('Le altre') + altre.map(tileHTML).join('')
+    : list.map(tileHTML).join('');
 }
 
 $('grid').addEventListener('click', (e) => {
@@ -190,7 +209,21 @@ $('grid').addEventListener('click', (e) => {
   openCard(tile.dataset.id);
 });
 
-$('q').addEventListener('input', (e) => { query = e.target.value; renderList(); });
+// L'intera riga porta il fuoco al campo: se per qualsiasi motivo il tocco non
+// centra l'input, la ricerca si apre lo stesso.
+document.querySelector('.search').addEventListener('click', (e) => {
+  if (e.target !== $('q')) $('q').focus();
+});
+
+let filtroTimer = null;
+$('q').addEventListener('input', (e) => {
+  query = e.target.value;
+  $('q-clear').hidden = !query;
+  // Ridisegnare l'intera griglia a ogni lettera è il modo più facile per far
+  // sembrare la tastiera bloccata su un telefono.
+  clearTimeout(filtroTimer);
+  filtroTimer = setTimeout(renderList, 120);
+});
 $('q-clear').addEventListener('click', () => { query = ''; $('q').value = ''; renderList(); });
 $('btn-settings').addEventListener('click', () => navigate({ view: 'settings' }));
 $('btn-add').addEventListener('click', () => startNew());
@@ -205,11 +238,15 @@ async function openCard(id) {
   navigate({ view: 'card', id });
 }
 
-function renderCard() {
+async function renderCard() {
   const state = history.state || {};
   const card = current || cards.find((c) => c.id === state.id);
   if (!card) { navigate({ view: 'list' }, true); return; }
   current = card;
+
+  const fav = $('btn-fav');
+  fav.setAttribute('aria-pressed', card.fav ? 'true' : 'false');
+  fav.setAttribute('aria-label', card.fav ? 'Togli dai preferiti' : 'Aggiungi ai preferiti');
 
   $('card-swatch').style.background = card.color;
   $('card-name').textContent = card.name;
@@ -219,6 +256,9 @@ function renderCard() {
   const panel = $('code-panel');
   const canvas = $('code-canvas');
   panel.classList.toggle('two-d', isTwoD(card.format));
+
+  await pronteGenerazione();
+  if (current !== card) return;   // nel frattempo l'utente è andato altrove
 
   const width = Math.max(280, panel.clientWidth - 36);
   const res = tryRenderCode(canvas, card.code, card.format, {
@@ -241,21 +281,36 @@ function renderCard() {
   $('d-uses').textContent = card.uses > 1 ? `${card.uses} volte` : 'la prima volta';
 }
 
+async function toggleFav(card) {
+  if (!card) return;
+  const aggiornata = await store.putCard({ ...card, fav: !card.fav });
+  cards = await store.allCards();
+  current = aggiornata;
+  renderCard();
+  toast(aggiornata.fav ? 'Aggiunta alle preferite.' : 'Tolta dalle preferite.');
+}
+
+$('btn-fav').addEventListener('click', () => toggleFav(current));
 $('btn-full').addEventListener('click', () => navigate({ view: 'full', id: current && current.id }));
 $('btn-edit').addEventListener('click', () => startEdit(current));
-$('btn-card-menu').addEventListener('click', () => { $('sheet').hidden = false; });
+$('btn-card-menu').addEventListener('click', () => {
+  $('sheet').querySelector('[data-act="fav"]').textContent =
+    current && current.fav ? 'Togli dai preferiti' : 'Aggiungi ai preferiti';
+  $('sheet').hidden = false;
+});
 
 $('sheet').addEventListener('click', (e) => {
   const act = e.target.dataset && e.target.dataset.act;
   if (!act && e.target !== $('sheet')) return;
   $('sheet').hidden = true;
+  if (act === 'fav') toggleFav(current);
   if (act === 'edit') startEdit(current);
   if (act === 'delete') removeCard(current);
 });
 
 // --- modalità cassa -----------------------------------------------------
 
-function renderFull() {
+async function renderFull() {
   const state = history.state || {};
   const card = current || cards.find((c) => c.id === state.id);
   if (!card) { navigate({ view: 'list' }, true); return; }
@@ -268,6 +323,9 @@ function renderFull() {
   const stage = $('full-stage');
   const rotor = $('full-rotor');
   const canvas = $('full-canvas');
+
+  await pronteGenerazione();
+  if (current !== card) return;
 
   // il layout deve essere calcolato dopo che la vista è visibile
   requestAnimationFrame(() => {
@@ -376,6 +434,7 @@ $('f-color').addEventListener('click', (e) => {
   const btn = e.target.closest('.sw');
   if (!btn) return;
   draft.color = btn.dataset.color;
+  draft.colorTouched = true;
   renderSwatches();
 });
 
@@ -394,14 +453,27 @@ $('f-code').addEventListener('input', (e) => {
   schedulePreview();
 });
 $('f-format').addEventListener('click', () => { draft.formatTouched = true; });
-$('f-sub').addEventListener('input', (e) => { draft.sub = e.target.value; });
+$('f-sub').addEventListener('input', (e) => { draft.sub = e.target.value; draft.subTouched = true; });
 $('f-note').addEventListener('input', (e) => { draft.note = e.target.value; });
 
 $('f-name').addEventListener('input', (e) => {
   draft.name = e.target.value;
   const matches = findInCatalog(draft.name);
   const box = $('suggest');
-  if (!matches.length || matches.some((m) => m.name === draft.name)) {
+
+  // Nome scritto per intero: il suggerimento non serve più, ma il catalogo sì.
+  // Applicarlo qui evita che chi digita "Coop" per esteso resti senza colore,
+  // programma e formato solo per non aver toccato l'elenco.
+  const esatto = matches.find(
+    (m) => m.name.toLowerCase() === draft.name.trim().toLowerCase()
+  );
+  if (esatto) {
+    box.hidden = true;
+    applicaCatalogo(esatto, { soloSeNonToccato: true });
+    return;
+  }
+
+  if (!matches.length) {
     box.hidden = true;
     return;
   }
@@ -415,25 +487,30 @@ $('f-name').addEventListener('input', (e) => {
   box._matches = matches;
 });
 
+/** Riempie i campi che l'utente non ha ancora deciso di suo. */
+function applicaCatalogo(m, opzioni = {}) {
+  const solo = !!opzioni.soloSeNonToccato;
+  draft.name = m.name;
+  draft.cat = m.cat;
+  if (!solo || !draft.subTouched) { draft.sub = m.sub; $('f-sub').value = m.sub; }
+  if (!solo || !draft.colorTouched) draft.color = m.color;
+  if (!draft.formatTouched && !draft.id) draft.format = m.format;
+  $('f-name').value = m.name;
+  renderFormatChips();
+  renderSwatches();
+  updatePreview();
+}
+
 $('suggest').addEventListener('click', (e) => {
   const btn = e.target.closest('button');
   if (!btn) return;
   const m = ($('suggest')._matches || [])[Number(btn.dataset.i)];
   if (!m) return;
-  draft.name = m.name;
-  draft.sub = m.sub;
-  draft.color = m.color;
-  draft.cat = m.cat;
-  if (!draft.formatTouched && !draft.id) draft.format = m.format;
-  $('f-name').value = m.name;
-  $('f-sub').value = m.sub;
   $('suggest').hidden = true;
-  renderFormatChips();
-  renderSwatches();
-  updatePreview();
+  applicaCatalogo(m);
 });
 
-function updatePreview() {
+async function updatePreview() {
   const hint = $('code-hint');
   const msg = $('preview-msg');
   const panel = $('preview-panel');
@@ -453,6 +530,7 @@ function updatePreview() {
 
   if (!v.ok) { panel.hidden = true; msg.textContent = ''; return; }
 
+  await pronteGenerazione();
   panel.classList.toggle('two-d', isTwoD(draft.format));
   const res = tryRenderCode(canvas, v.code, draft.format, {
     targetWidth: 560, barHeight: isTwoD(draft.format) ? undefined : 14,
@@ -472,6 +550,7 @@ async function save() {
   const v = validate(code, draft.format);
   if (!v.ok) { toast(v.error, true); return; }
 
+  await pronteGenerazione();
   const probe = document.createElement('canvas');
   const res = tryRenderCode(probe, v.code, draft.format, { targetWidth: 300 });
   if (!res.ok) { toast('Codice non disegnabile: ' + res.error, true); return; }
@@ -659,6 +738,10 @@ async function boot() {
     try { await navigator.serviceWorker.register('sw.js'); } catch (_) { /* ignora */ }
   }
 
+  // La libreria che disegna i codici arriva in sottofondo, dopo che l'elenco è
+  // già a schermo: l'avvio resta immediato e aprire una tessera è istantaneo
+  // lo stesso.
+  setTimeout(() => { pronteGenerazione().catch(() => {}); }, 600);
 }
 
 boot();

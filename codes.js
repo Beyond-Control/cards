@@ -119,11 +119,38 @@ export function guessFormat(code) {
   return 'code128';
 }
 
+// --- Caricamento su richiesta ------------------------------------------
+
+const caricate = {};
+
+function caricaScript(src) {
+  if (caricate[src]) return caricate[src];
+  caricate[src] = new Promise((res, rej) => {
+    const el = document.createElement('script');
+    el.src = src;
+    el.async = true;
+    el.onload = () => res();
+    el.onerror = () => { caricate[src] = null; rej(new Error('Non riesco a caricare ' + src)); };
+    document.head.appendChild(el);
+  });
+  return caricate[src];
+}
+
+/** Serve prima di disegnare un codice. */
+export async function pronteGenerazione() {
+  if (!window.bwipjs) await caricaScript('vendor/bwip-js.min.js');
+}
+
+/** Serve prima di leggere un codice. */
+export async function pronteLettura() {
+  if (!window.ZXing) await caricaScript('vendor/zxing.min.js');
+}
+
 // --- Generazione -------------------------------------------------------
 
 function bwip() {
   const lib = window.bwipjs;
-  if (!lib) throw new Error('Libreria dei codici non caricata.');
+  if (!lib) throw new Error('Libreria dei codici non ancora pronta.');
   return lib;
 }
 
@@ -173,7 +200,7 @@ export function tryRenderCode(canvas, code, formatKey, opts) {
 
 function zxing() {
   const lib = window.ZXing;
-  if (!lib) throw new Error('Libreria di lettura non caricata.');
+  if (!lib) throw new Error('Libreria di lettura non ancora pronta.');
   return lib;
 }
 
@@ -237,6 +264,7 @@ function drawRegion(video, canvas, sx, sy, sw, sh, rotate) {
  * Restituisce un oggetto con stop().
  */
 export async function startLiveScan(videoEl, onResult, onError, onStatus) {
+  await pronteLettura();
   const Z = zxing();
   let stopped = false;
   let stream = null;
@@ -341,6 +369,7 @@ export async function startLiveScan(videoEl, onResult, onError, onStatus) {
 
 /** Legge un codice da una foto scattata o scelta dalla galleria. */
 export async function scanImageFile(file) {
+  await pronteLettura();
   const reader = buildReader();
   const url = URL.createObjectURL(file);
   try {

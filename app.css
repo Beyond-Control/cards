@@ -15,8 +15,6 @@
   --display: 'Space Grotesk', 'Helvetica Neue', sans-serif;
   --body: 'IBM Plex Sans', 'Helvetica Neue', sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
-  --top: env(safe-area-inset-top, 0px);
-  --bot: env(safe-area-inset-bottom, 0px);
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -66,7 +64,7 @@ svg.thick { stroke-width: 2.3; }
 .view[hidden] { display: none; }
 .view.light { background: #fff; color: #0D0D10; }
 
-.safe-top { height: var(--top); flex-shrink: 0; }
+.safe-top { height: env(safe-area-inset-top, 0px); flex-shrink: 0; min-height: 0; }
 
 .muted { color: var(--muted); }
 .small { font-size: 12.5px; }
@@ -116,6 +114,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 .search {
   margin: 18px 20px 0; flex-shrink: 0;
+  position: relative; z-index: 2;
+  touch-action: manipulation;
   display: flex; align-items: center; gap: 10px;
   height: 46px; padding: 0 14px; border-radius: 13px;
   background: var(--surface); border: 1px solid var(--line);
@@ -123,7 +123,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 }
 .search input {
   flex-grow: 1; min-width: 0; background: none; border: 0; outline: none;
-  color: var(--text); font: inherit; font-size: 15px;
+  color: var(--text); font: inherit; font-size: 16px; /* sotto 16px iOS zooma */
+  height: 100%; touch-action: manipulation;
 }
 .search input::placeholder { color: var(--dim); }
 .search input::-webkit-search-cancel-button { display: none; }
@@ -164,11 +165,36 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 .fab-wrap {
   position: absolute; left: 0; right: 0; bottom: 0;
-  padding: 40px 20px calc(22px + var(--bot));
+  padding: 40px 20px calc(22px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(180deg, rgba(14, 14, 18, 0) 0%, var(--bg) 46%);
   pointer-events: none;
 }
 .fab-wrap .btn { pointer-events: auto; }
+
+.nav-right { display: flex; align-items: center; }
+
+/* La stella piena distingue a colpo d'occhio una preferita da una normale:
+   il contorno da solo si confonde con le altre icone della barra. */
+svg.star { fill: none; }
+[aria-pressed="true"] svg.star { fill: var(--accent); stroke: var(--accent); }
+#btn-fav[aria-pressed="true"] { color: var(--accent); }
+
+.grid-head {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.11em;
+  text-transform: uppercase; color: var(--dim);
+  margin: 2px 0 -2px;
+}
+.grid-head:not(:first-child) { margin-top: 14px; }
+.grid-head .rule { flex-grow: 1; height: 1px; background: var(--line); }
+
+.tile-star {
+  position: absolute; top: 9px; right: 9px;
+  width: 15px; height: 15px; opacity: 0.9;
+  /* la regola generale svg{fill:none} batte l'attributo fill nel markup */
+  fill: currentColor; stroke: none;
+}
 
 /* ---------- tessera aperta ---------- */
 
@@ -223,7 +249,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .details dd.mono { font-size: 13px; letter-spacing: 0.04em; }
 
 .card-actions {
-  flex-shrink: 0; padding: 12px 20px calc(22px + var(--bot));
+  flex-shrink: 0; padding: 12px 20px calc(22px + env(safe-area-inset-bottom, 0px));
   display: flex; gap: 10px;
 }
 
@@ -238,7 +264,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .full-rotor { position: relative; display: flex; align-items: center; justify-content: center; }
 .full-rotor canvas { display: block; }
 .full-foot {
-  flex-shrink: 0; padding: 0 20px calc(26px + var(--bot));
+  flex-shrink: 0; padding: 0 20px calc(26px + env(safe-area-inset-bottom, 0px));
   display: flex; flex-direction: column; align-items: center; gap: 12px;
 }
 .view.light .muted { color: #8A8892; }
@@ -343,17 +369,17 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .reticle .br { bottom: 0; right: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 18px; }
 
 .scan-top {
-  position: absolute; left: 0; right: 0; top: var(--top);
+  position: absolute; left: 0; right: 0; top: env(safe-area-inset-top, 0px);
   padding: 0 14px; height: 52px;
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
 .scan-title { font-family: var(--display); font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
 .scan-msg {
-  position: absolute; left: 40px; right: 40px; top: calc(var(--top) + 92px);
+  position: absolute; left: 40px; right: 40px; top: calc(env(safe-area-inset-top, 0px) + 92px);
   text-align: center; font-size: 13.5px; color: rgba(242, 241, 238, 0.72);
 }
 .scan-hit {
-  position: absolute; left: 24px; right: 24px; bottom: calc(180px + var(--bot));
+  position: absolute; left: 24px; right: 24px; bottom: calc(180px + env(safe-area-inset-bottom, 0px));
   display: flex; align-items: center; gap: 11px;
   padding: 13px 15px; border-radius: 16px;
   background: rgba(23, 23, 29, 0.94); border: 1px solid rgba(255, 255, 255, 0.09);
@@ -366,7 +392,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .scan-hit em { display: block; font-style: normal; font-size: 12px; letter-spacing: 0.08em; color: var(--muted); word-break: break-all; }
 .scan-foot {
   position: absolute; left: 0; right: 0; bottom: 0;
-  padding: 30px 20px calc(22px + var(--bot));
+  padding: 30px 20px calc(22px + env(safe-area-inset-bottom, 0px));
   display: flex; flex-direction: column; gap: 12px;
   background: linear-gradient(180deg, rgba(14, 14, 18, 0) 0%, rgba(14, 14, 18, 0.92) 40%, var(--bg) 100%);
 }
@@ -376,7 +402,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 .settings-body {
   flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
-  padding: 6px 20px calc(30px + var(--bot));
+  padding: 6px 20px calc(30px + env(safe-area-inset-bottom, 0px));
 }
 .settings-body h1 { margin-bottom: 8px; }
 .settings-body p { font-size: 14px; }
@@ -386,7 +412,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 /* ---------- toast e menu ---------- */
 
 .toast {
-  position: fixed; left: 20px; right: 20px; bottom: calc(90px + var(--bot));
+  position: fixed; left: 20px; right: 20px; bottom: calc(90px + env(safe-area-inset-bottom, 0px));
   background: var(--surface-2); border: 1px solid var(--line-strong);
   border-radius: 14px; padding: 13px 16px; font-size: 14px;
   z-index: 60; text-align: center;
@@ -397,7 +423,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 .sheet { position: fixed; inset: 0; z-index: 70; background: rgba(0, 0, 0, 0.55); display: flex; align-items: flex-end; }
 .sheet-panel {
-  width: 100%; padding: 8px 12px calc(12px + var(--bot));
+  width: 100%; padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px));
   display: flex; flex-direction: column; gap: 8px;
 }
 .sheet-item {

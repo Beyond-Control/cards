@@ -79,6 +79,10 @@ schermo acceso mentre mostri il codice alla cassa.
 
 - **Portafoglio** — le tessere in griglia, ordinate per ultima usata. La
   ricerca filtra su nome, programma, numero e nota.
+- **Preferite** — la stella in alto a destra nella tessera aperta (o la voce
+  nel menu «⋮») la fissa in cima. Quando ce n'è almeno una, l'elenco si divide
+  in «Preferite» e «Le altre»; con nessuna, o con tutte preferite, le
+  intestazioni spariscono perché non separerebbero niente.
 - **Tessera aperta** — il codice su fondo bianco pieno, il numero sotto.
   Lo schermo non si spegne finché la tessera è aperta.
 - **Apri a tutto schermo** — la modalità cassa: bianco pieno, codice ruotato
@@ -135,6 +139,14 @@ vendor/zxing.min.js      legge i codici da fotocamera e foto
 
 Nessuna build, nessun bundler, nessuna dipendenza da installare: sono file
 statici che si aprono e si modificano direttamente.
+
+## Velocità e avvio
+
+Le due librerie pesano insieme 1,4 MB e servivano solo a disegnare o leggere un
+codice, ma venivano caricate a ogni apertura. Ora no: l'elenco compare subito,
+la libreria che disegna i codici arriva in sottofondo mezzo secondo dopo, e
+quella che li legge solo quando apri la scansione. Entrambe restano nella cache
+del service worker, quindi funzionano anche offline.
 
 ## Aggiornarla
 
