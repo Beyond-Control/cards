@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Prova tastiera</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Prova tastiera">
+<meta name="theme-color" content="#0E0E12">
+<style>
+  /* Nessuna libreria, nessun service worker, nessun modulo: solo i due casi
+     da distinguere. Il campo A sta in una pagina normale; il campo B sta
+     dentro esattamente il tipo di impaginazione che usa Tessere. */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px calc(20px + env(safe-area-inset-left, 0px));
+    padding-top: calc(20px + env(safe-area-inset-top, 0px));
+    background: #0E0E12; color: #F2F1EE;
+    font: 16px/1.5 -apple-system, system-ui, sans-serif;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 26px 0 8px; }
+  p { margin: 0 0 8px; color: #9c9ba6; font-size: 14px; }
+  input {
+    width: 100%; height: 52px; padding: 0 14px; margin-top: 6px;
+    font-size: 16px; border-radius: 12px; border: 1px solid #35343d;
+    background: #17171D; color: #F2F1EE; outline: none;
+  }
+  input:focus { border-color: #e0b93a; }
+  .esito { font-size: 13px; color: #e0b93a; min-height: 20px; margin-top: 6px; }
+  /* Caso B: la stessa gabbia di Tessere — schermata fissa, niente scorrimento
+     sul documento, contenuto in una colonna flessibile. */
+  .gabbia {
+    position: relative; height: 260px; overflow: hidden;
+    border: 1px dashed #35343d; border-radius: 14px; padding: 14px;
+    display: flex; flex-direction: column;
+  }
+  pre {
+    background: #17171D; border: 1px solid #35343d; border-radius: 12px;
+    padding: 12px; font-size: 12px; color: #9c9ba6; overflow-x: auto;
+    white-space: pre-wrap; word-break: break-word;
+  }
+</style>
+</head>
+<body>
+
+<h1>Prova tastiera</h1>
+<p>Aggiungi questa pagina alla schermata Home, aprila da lì e tocca i due campi.</p>
+
+<h2>A · campo in una pagina normale</h2>
+<input id="a" type="text" placeholder="tocca qui e scrivi" autocomplete="off">
+<div class="esito" id="ea">—</div>
+
+<h2>B · campo nella stessa gabbia di Tessere</h2>
+<div class="gabbia">
+  <p>Contenitore a posizione fissa, senza scorrimento.</p>
+  <input id="b" type="text" placeholder="tocca qui e scrivi" autocomplete="off">
+  <div class="esito" id="eb">—</div>
+</div>
+
+<h2>Cosa sto vedendo</h2>
+<pre id="info">…</pre>
+
+<script>
+  function sorveglia(campo, esito) {
+    var scritto = 0;
+    campo.addEventListener('focus', function () {
+      esito.textContent = 'cursore sì · tastiera: scrivi una lettera per saperlo';
+    });
+    campo.addEventListener('input', function () {
+      scritto++;
+      esito.textContent = 'tastiera sì — ' + scritto + ' caratteri ricevuti';
+    });
+    campo.addEventListener('blur', function () {
+      if (!scritto) esito.textContent = 'cursore perso senza aver scritto niente';
+    });
+  }
+  sorveglia(document.getElementById('a'), document.getElementById('ea'));
+  sorveglia(document.getElementById('b'), document.getElementById('eb'));
+
+  document.getElementById('info').textContent = [
+    'aperta dalla home: ' + (window.navigator.standalone === true ? 'sì' :
+      (window.matchMedia('(display-mode: standalone)').matches ? 'sì' : 'no, sei nel browser')),
+    'schermo: ' + window.innerWidth + '×' + window.innerHeight,
+    'zona sicura in alto: ' + getComputedStyle(document.body).paddingTop,
+    'service worker attivi qui: ' + ('serviceWorker' in navigator ? 'supportati' : 'no'),
+    'browser: ' + navigator.userAgent
+  ].join('\n');
+</script>
+</body>
+</html>
