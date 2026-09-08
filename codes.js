@@ -177,15 +177,19 @@ function zxing() {
   return lib;
 }
 
-function buildReader() {
-  const Z = zxing();
+function buildHints(Z) {
   const hints = new Map();
   hints.set(
     Z.DecodeHintType.POSSIBLE_FORMATS,
     FORMATS.map((f) => Z.BarcodeFormat[f.zxing]).filter((v) => v !== undefined)
   );
   hints.set(Z.DecodeHintType.TRY_HARDER, true);
-  return new Z.BrowserMultiFormatReader(hints, 300);
+  return hints;
+}
+
+function buildReader() {
+  const Z = zxing();
+  return new Z.BrowserMultiFormatReader(buildHints(Z), 300);
 }
 
 function toResult(result) {
@@ -195,39 +199,141 @@ function toResult(result) {
   return { code: result.getText(), format: f ? f.key : 'code128', formatLabel: f ? f.label : name };
 }
 
-/**
- * Scansione dal vivo. Restituisce un oggetto con stop().
- * onResult riceve { code, format, formatLabel }.
- */
-export async function startLiveScan(videoEl, onResult, onError) {
-  const reader = buildReader();
-  let stopped = false;
-  const Z = zxing();
+// --- lettura dal vivo ---------------------------------------------------
+//
+// Il ciclo di decodifica è scritto a mano invece di lasciarlo alla libreria,
+// per tre motivi che sul telefono fanno la differenza fra "legge" e "non
+// legge mai":
+//
+// 1. la libreria analizza il fotogramma intero, ridimensionato; qui invece si
+//    ritaglia la fascia centrale alla risoluzione nativa, dove il codice sta
+//    davvero, e i tratti restano netti;
+// 2. i lettori lineari di ZXing scandiscono righe orizzontali: se tieni la
+//    tessera ruotata non trovano niente, quindi si prova anche a 90°;
+// 3. si chiede una risoluzione alta e la messa a fuoco continua, perché un
+//    codice a barre sfocato non si legge nemmeno a occhio.
 
-  await reader.decodeFromConstraints(
-    { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } } },
-    videoEl,
-    (result, err) => {
-      if (stopped) return;
-      if (result) {
-        onResult(toResult(result));
-        return;
-      }
-      // NotFoundException arriva a ogni fotogramma senza codice: è normale.
-      if (err && !(err instanceof Z.NotFoundException) && onError) onError(err);
+function drawRegion(video, canvas, sx, sy, sw, sh, rotate) {
+  const MAX = 1400;                       // oltre non serve, e costa tempo
+  const k = Math.min(1, MAX / Math.max(sw, sh));
+  const dw = Math.max(2, Math.round(sw * k));
+  const dh = Math.max(2, Math.round(sh * k));
+  canvas.width = rotate ? dh : dw;
+  canvas.height = rotate ? dw : dh;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.save();
+  if (rotate) {
+    ctx.translate(dh, 0);
+    ctx.rotate(Math.PI / 2);
+  }
+  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, dw, dh);
+  ctx.restore();
+}
+
+/**
+ * Avvia la lettura dal vivo.
+ * onResult riceve { code, format, formatLabel }; onStatus riceve il numero
+ * di tentativi, così l'interfaccia può dire qualcosa invece di tacere.
+ * Restituisce un oggetto con stop().
+ */
+export async function startLiveScan(videoEl, onResult, onError, onStatus) {
+  const Z = zxing();
+  let stopped = false;
+  let stream = null;
+  let timer = null;
+  let attempts = 0;
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+      },
+    });
+  } catch (err) {
+    throw err;   // il chiamante distingue permesso negato da fotocamera assente
+  }
+
+  // Messa a fuoco continua dove il dispositivo la espone: senza, molti
+  // telefoni restano fissi sull'infinito e la tessera resta sfocata.
+  try {
+    const track = stream.getVideoTracks()[0];
+    const caps = track.getCapabilities ? track.getCapabilities() : {};
+    if (caps && caps.focusMode && caps.focusMode.includes('continuous')) {
+      await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
     }
-  );
+  } catch (_) { /* facoltativo */ }
+
+  videoEl.setAttribute('playsinline', 'true');
+  videoEl.setAttribute('muted', 'true');
+  videoEl.muted = true;
+  videoEl.srcObject = stream;
+
+  await new Promise((res) => {
+    if (videoEl.readyState >= 2) return res();
+    videoEl.onloadedmetadata = () => res();
+    setTimeout(res, 3000);
+  });
+  try { await videoEl.play(); } catch (_) { /* alcuni browser partono da soli */ }
+
+  const reader = new Z.MultiFormatReader();
+  reader.setHints(buildHints(Z));
+  const canvas = document.createElement('canvas');
+
+  const tick = () => {
+    if (stopped) return;
+    const vw = videoEl.videoWidth;
+    const vh = videoEl.videoHeight;
+
+    if (vw && vh && videoEl.readyState >= 2) {
+      // Tre inquadrature a rotazione, una per giro, per restare reattivi.
+      // La fascia va presa nel verso del codice: per un codice orizzontale
+      // una striscia larga, per uno verticale una striscia alta. Ritagliare
+      // di traverso taglierebbe il codice per il lungo e lo renderebbe
+      // illeggibile — ed è esattamente l'errore che faceva fallire la lettura
+      // delle tessere tenute ruotate.
+      const strategia = attempts % 3;
+      const bandH = Math.round(vh * 0.55);
+      const bandY = Math.round((vh - bandH) / 2);
+      const bandW = Math.round(vw * 0.55);
+      const bandX = Math.round((vw - bandW) / 2);
+      try {
+        if (strategia === 0) drawRegion(videoEl, canvas, 0, bandY, vw, bandH, false);
+        else if (strategia === 1) drawRegion(videoEl, canvas, bandX, 0, bandW, vh, true);
+        else drawRegion(videoEl, canvas, 0, 0, vw, vh, false);
+
+        const src = new Z.HTMLCanvasElementLuminanceSource(canvas);
+        const bitmap = new Z.BinaryBitmap(new Z.HybridBinarizer(src));
+        const result = reader.decode(bitmap);
+        if (result) {
+          stopped = true;
+          onResult(toResult(result));
+          return;
+        }
+      } catch (err) {
+        // NotFoundException a ogni fotogramma senza codice: è il caso normale
+        if (err && !(err instanceof Z.NotFoundException) && err.name !== 'NotFoundException') {
+          if (onError) onError(err);
+        }
+      } finally {
+        try { reader.reset(); } catch (_) { /* ignora */ }
+      }
+      attempts++;
+      if (onStatus) onStatus(attempts);
+    }
+
+    timer = setTimeout(tick, 120);
+  };
+
+  tick();
 
   return {
     stop() {
       stopped = true;
-      try {
-        reader.reset();
-      } catch (_) {
-        /* ignora */
-      }
-      const stream = videoEl.srcObject;
-      if (stream && stream.getTracks) stream.getTracks().forEach((t) => t.stop());
+      clearTimeout(timer);
+      if (stream) stream.getTracks().forEach((t) => t.stop());
       videoEl.srcObject = null;
     },
   };

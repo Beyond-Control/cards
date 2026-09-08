@@ -58,6 +58,7 @@ export async function allCards() {
   return (rows || []).filter((c) => !c.deletedAt);
 }
 
+
 export async function getCard(id) {
   return tx(STORE, 'readonly', (s) => s.get(id));
 }

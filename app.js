@@ -5,7 +5,7 @@ import {
   tryRenderCode, startLiveScan, scanImageFile,
 } from './codes.js';
 
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 const PRIMARY_FORMATS = ['ean13', 'code128', 'code39', 'itf', 'qrcode', 'aztec'];
 
 const $ = (id) => document.getElementById(id);
@@ -541,12 +541,32 @@ async function openScanner() {
   }
 
   try {
-    scanner = await startLiveScan($('scan-video'), (hit) => showHit(hit));
+    scanner = await startLiveScan(
+      $('scan-video'),
+      (hit) => showHit(hit),
+      null,
+      (tentativi) => {
+        if (pendingScan) return;
+        // Dopo qualche secondo senza esito conviene dire cosa cambiare,
+        // invece di lasciare l'utente a fissare un rettangolo muto.
+        if (tentativi === 12) {
+          $('scan-msg').textContent = 'Sto cercando… avvicina la tessera fino a riempire il riquadro.';
+        } else if (tentativi === 45) {
+          $('scan-msg').textContent =
+            'Non ci riesco. Prova più luce, tienila ben piatta, oppure usa «Scatta una foto»: da ferma si legge meglio.';
+        }
+      }
+    );
   } catch (err) {
-    const denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
-    $('scan-msg').textContent = denied
-      ? 'Accesso alla fotocamera negato. Puoi consentirlo dalle impostazioni del sito, oppure scattare una foto.'
-      : 'Fotocamera non disponibile. Prova con «Scatta una foto» o digita il numero.';
+    const nome = (err && err.name) || '';
+    if (nome === 'NotAllowedError' || nome === 'SecurityError') {
+      $('scan-msg').textContent =
+        'Accesso alla fotocamera negato. In Safari: «aA» nella barra indirizzi → Impostazioni sito → Fotocamera → Consenti.';
+    } else if (nome === 'NotFoundError' || nome === 'OverconstrainedError') {
+      $('scan-msg').textContent = 'Nessuna fotocamera utilizzabile. Usa «Scatta una foto» o digita il numero.';
+    } else {
+      $('scan-msg').textContent = 'Fotocamera non disponibile (' + (nome || 'errore') + '). Prova con «Scatta una foto».';
+    }
   }
 }
 
@@ -580,7 +600,7 @@ async function renderSettings() {
       `${cards.length} tessere · ${mb} MB usati` +
       (info.persisted ? ' · archiviazione protetta' : ' · archiviazione non protetta, esporta ogni tanto');
   } else {
-    $('storage-line').textContent = `${cards.length} tessere salvate su questo telefono.`;
+    $('storage-line').textContent = `${cards.length} tessere su questo telefono.`;
   }
 }
 
@@ -638,6 +658,7 @@ async function boot() {
   if ('serviceWorker' in navigator) {
     try { await navigator.serviceWorker.register('sw.js'); } catch (_) { /* ignora */ }
   }
+
 }
 
 boot();

@@ -19,8 +19,52 @@ disco (`file://`) non basta.
    dopo qualche ora il sito viene rimosso. Dalle impostazioni del sito puoi
    anche rinominarlo in qualcosa come `tessere-ale.netlify.app`.
 
-Alternative equivalenti: Vercel, Cloudflare Pages, GitHub Pages. Sono file
-statici, va bene qualunque hosting che serva HTTPS.
+**GitHub Pages**
+
+Funziona bene: l'app è già scritta con percorsi relativi, quindi gira senza
+modifiche anche sotto una sottocartella tipo `utente.github.io/tessere/`
+— service worker e funzionamento offline compresi.
+
+Una cosa da sapere prima: sul piano gratuito **GitHub Pages funziona solo da
+repository pubbliche**, e il sito pubblicato è comunque pubblico. Per questa
+app non è un problema — sul server non finisce nessun dato, le tessere stanno
+solo nel telefono — ma il codice sarà visibile a chiunque. (Pubblicare un sito
+Pages davvero privato richiede GitHub Enterprise Cloud, non basta Pro.)
+
+*Dall'interfaccia web, senza usare git:*
+
+1. Crea una repository nuova, **pubblica**, chiamata per esempio `tessere`.
+   Non aggiungere README, licenza o `.gitignore`.
+2. Nella pagina della repo vuota, clicca **uploading an existing file**.
+3. Trascina **il contenuto** della cartella `tessere` — cioè `index.html`,
+   `app.js`, le altre e le sottocartelle `icons/` e `vendor/` — **non** la
+   cartella stessa: i file devono stare nella radice della repo, altrimenti
+   l'indirizzo diventa `.../tessere/tessere/`.
+4. **Commit changes**.
+5. **Settings → Pages**. In *Source* scegli **Deploy from a branch**, ramo
+   `main`, cartella `/ (root)`, e salva.
+6. Dopo un paio di minuti l'app è su `https://<tuo-utente>.github.io/tessere/`.
+
+*Da riga di comando:*
+
+```bash
+cd tessere
+git init -b main
+git add -A
+git commit -m "Tessere: prima versione"
+git remote add origin https://github.com/<tuo-utente>/tessere.git
+git push -u origin main
+```
+
+Poi la stessa configurazione al punto 5.
+
+Nello zip c'è un file `.nojekyll` che disattiva l'elaborazione Jekyll di
+GitHub. Se l'uploader web non lo carica (i browser a volte nascondono i file
+che iniziano per punto) non succede niente: qui nessun file inizia per `_`,
+quindi Jekyll non toglierebbe nulla.
+
+Alternative equivalenti: Vercel, Cloudflare Pages. Sono file statici, va bene
+qualunque hosting che serva HTTPS.
 
 ## Installarla sull'iPhone
 
@@ -70,8 +114,8 @@ finisce in File o dove scegli tu. Per ripristinare: **Importa da file**.
 L'importazione è additiva — aggiorna le tessere più vecchie e non cancella
 niente.
 
-Quando aggiungeremo la sincronizzazione cloud questo passaggio sparirà: sarà
-il server a tenere la copia buona.
+Finché non c'è la sincronizzazione, il file di backup è l'unica rete di
+sicurezza che hai.
 
 ## Struttura dei file
 
@@ -94,13 +138,35 @@ statici che si aprono e si modificano direttamente.
 
 ## Aggiornarla
 
-Cambia i file e ricarica su Netlify. Il service worker ha una versione in cima
-a `sw.js` (`tessere-v1`): **cambiala** a ogni aggiornamento (`tessere-v2`…),
-altrimenti i telefoni continuano a servire la copia in cache.
+Cambia i file e ricarica (Netlify: trascina di nuovo la cartella; GitHub
+Pages: `git push`, oppure ricarica i file dall'interfaccia web).
+
+**In entrambi i casi cambia la versione in cima a `sw.js`** — da `tessere-v1`
+a `tessere-v2` e così via. Il service worker serve i file dalla cache, quindi
+senza quel cambio i telefoni continuano a mostrare la versione vecchia anche
+dopo la pubblicazione.
+
+## Se un codice non viene riconosciuto
+
+La lettura dal vivo prova tre inquadrature a rotazione: fascia centrale
+orizzontale, fascia centrale verticale ruotata di 90° (per le tessere tenute
+per il verso lungo) e fotogramma intero. In più chiede al telefono la messa a
+fuoco continua e la massima risoluzione disponibile.
+
+Quello che resta fuori portata è un codice **sfocato**: se i tratti sono
+impastati non lo legge nessuno, nemmeno l'occhio. In quel caso:
+
+- avvicina finché la tessera riempie il riquadro, poi aspetta un attimo che
+  metta a fuoco;
+- più luce, e tessera ben piatta (le tessere curve fanno riflessi);
+- se non basta, **Scatta una foto**: da ferma la decodifica ha molte più
+  possibilità della ripresa dal vivo;
+- in ultima istanza il numero è stampato sotto al codice: digitarlo a mano
+  dà lo stesso identico risultato.
 
 ## Cosa manca ancora
 
-- Sincronizzazione cloud e account (scelta: prima l'app locale)
+- Sincronizzazione fra dispositivi e account
 - Condivisione delle tessere in famiglia
 - Suggerimento per posizione («sei da Esselunga»), che richiede il permesso di
   geolocalizzazione
