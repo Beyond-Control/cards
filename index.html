@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Tessere</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#0E0E12">
+<meta name="description" content="Le tue carte fedeltà, sul telefono.">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tessere">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<!-- PORTAFOGLIO -->
+<section id="view-list" class="view">
+  <div class="safe-top"></div>
+  <header class="list-head">
+    <div>
+      <h1>Portafoglio</h1>
+      <p id="list-count" class="muted small">Nessuna tessera</p>
+    </div>
+    <button id="btn-settings" class="icon-btn" aria-label="Impostazioni e backup">
+      <svg viewBox="0 0 24 24" class="i20"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"/><path d="M19.4 13.6a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1v.2a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-2.8-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7h-.2a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.1-2.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 2.7-1.1v-.2a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.8 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7h.2a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.4.9Z"/></svg>
+    </button>
+  </header>
+
+  <div class="search">
+    <svg viewBox="0 0 24 24" class="i18"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="Cerca tessera, catena o numero" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
+    <button id="q-clear" class="q-clear" hidden aria-label="Cancella ricerca">
+      <svg viewBox="0 0 24 24" class="i16"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+
+  <div id="grid" class="grid"></div>
+
+  <div id="empty" class="empty" hidden>
+    <svg viewBox="0 0 24 24" class="i40"><rect x="2.5" y="5.5" width="19" height="14" rx="3"/><path d="M2.5 10h19"/></svg>
+    <h2>Il portafoglio è vuoto</h2>
+    <p class="muted">Aggiungi la prima tessera: inquadra il codice sul retro, oppure scrivi il numero a mano.</p>
+  </div>
+
+  <div id="no-results" class="empty" hidden>
+    <p class="muted">Nessuna tessera trovata.</p>
+  </div>
+
+  <div class="fab-wrap">
+    <button id="btn-add" class="btn primary big">
+      <svg viewBox="0 0 24 24" class="i20 thick"><path d="M12 5v14M5 12h14"/></svg>
+      Aggiungi tessera
+    </button>
+  </div>
+</section>
+
+<!-- TESSERA APERTA -->
+<section id="view-card" class="view" hidden>
+  <div class="safe-top"></div>
+  <nav class="navbar">
+    <button class="icon-btn" data-back aria-label="Torna al portafoglio">
+      <svg viewBox="0 0 24 24" class="i22"><path d="m15 5-7 7 7 7"/></svg>
+    </button>
+    <span class="muted small">Portafoglio</span>
+    <button id="btn-card-menu" class="icon-btn" aria-label="Altre azioni">
+      <svg viewBox="0 0 24 24" class="i20"><circle cx="12" cy="5.5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="18.5" r="1"/></svg>
+    </button>
+  </nav>
+
+  <div class="card-body">
+    <div class="card-id">
+      <div id="card-swatch" class="swatch"></div>
+      <div class="card-id-text">
+        <h1 id="card-name">—</h1>
+        <p id="card-sub" class="muted small"></p>
+      </div>
+    </div>
+
+    <div id="code-panel" class="code-panel">
+      <canvas id="code-canvas" aria-label="Codice della tessera"></canvas>
+      <p id="code-number" class="code-number"></p>
+    </div>
+    <p id="code-error" class="code-error" hidden></p>
+
+    <p class="awake muted small">
+      <svg viewBox="0 0 24 24" class="i15"><rect x="6" y="2.5" width="12" height="19" rx="2.6"/><path d="M11 18.5h2"/></svg>
+      <span>Lo schermo resta acceso finché la tessera è aperta</span>
+    </p>
+
+    <dl class="details">
+      <div><dt>Formato</dt><dd id="d-format" class="mono"></dd></div>
+      <div><dt>Aggiunta</dt><dd id="d-added"></dd></div>
+      <div id="d-note-row"><dt>Nota</dt><dd id="d-note"></dd></div>
+      <div><dt>Usata</dt><dd id="d-uses"></dd></div>
+    </dl>
+  </div>
+
+  <div class="card-actions">
+    <button id="btn-full" class="btn primary grow">
+      <svg viewBox="0 0 24 24" class="i18 thick"><path d="M9 3H4.5A1.5 1.5 0 0 0 3 4.5V9M15 3h4.5A1.5 1.5 0 0 1 21 4.5V9M9 21H4.5A1.5 1.5 0 0 1 3 19.5V15M15 21h4.5a1.5 1.5 0 0 0 1.5-1.5V15"/></svg>
+      Apri a tutto schermo
+    </button>
+    <button id="btn-edit" class="btn ghost square" aria-label="Modifica tessera">
+      <svg viewBox="0 0 24 24" class="i18"><path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16z"/></svg>
+    </button>
+  </div>
+</section>
+
+<!-- MODALITÀ CASSA -->
+<section id="view-full" class="view light" hidden>
+  <div class="safe-top"></div>
+  <div class="full-head">
+    <div class="full-id">
+      <div id="full-swatch" class="swatch small"></div>
+      <span id="full-name"></span>
+    </div>
+    <button id="btn-full-close" class="icon-btn dark" aria-label="Chiudi">
+      <svg viewBox="0 0 24 24" class="i20"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div id="full-stage" class="full-stage">
+    <div id="full-rotor" class="full-rotor"><canvas id="full-canvas"></canvas></div>
+  </div>
+  <div class="full-foot">
+    <p id="full-number" class="code-number big"></p>
+    <p id="full-hint" class="muted small">Lo schermo resta acceso · tocca per uscire</p>
+  </div>
+</section>
+
+<!-- AGGIUNGI / MODIFICA -->
+<section id="view-form" class="view" hidden>
+  <div class="safe-top"></div>
+  <nav class="navbar">
+    <button class="icon-btn" data-back aria-label="Annulla">
+      <svg viewBox="0 0 24 24" class="i20"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <span id="form-title" class="muted small">Nuova tessera</span>
+    <button id="btn-delete" class="icon-btn danger" hidden aria-label="Elimina tessera">
+      <svg viewBox="0 0 24 24" class="i20"><path d="M4 7h16M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M6.5 7l.8 12a2 2 0 0 0 2 1.9h5.4a2 2 0 0 0 2-1.9l.8-12"/></svg>
+    </button>
+  </nav>
+
+  <div class="form-body">
+    <button id="btn-scan" class="scan-cta">
+      <span class="scan-cta-icon">
+        <svg viewBox="0 0 24 24" class="i22"><path d="M9 3H4.5A1.5 1.5 0 0 0 3 4.5V9M15 3h4.5A1.5 1.5 0 0 1 21 4.5V9M9 21H4.5A1.5 1.5 0 0 1 3 19.5V15M15 21h4.5a1.5 1.5 0 0 0 1.5-1.5V15M7 12h10"/></svg>
+      </span>
+      <span class="scan-cta-text">
+        <strong>Inquadra il codice</strong>
+        <span class="muted small">Il formato viene riconosciuto da solo</span>
+      </span>
+      <svg viewBox="0 0 24 24" class="i18 chev"><path d="m9 5 7 7-7 7"/></svg>
+    </button>
+
+    <div class="or"><span></span><em>oppure a mano</em><span></span></div>
+
+    <label class="field">
+      <span class="lab">Numero della tessera</span>
+      <input id="f-code" type="text" inputmode="text" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="0000 0000 0000" class="mono big-input">
+    </label>
+    <p id="code-hint" class="hint" hidden></p>
+
+    <div class="field">
+      <span class="lab">Formato</span>
+      <div id="f-format" class="chips"></div>
+    </div>
+
+    <label class="field">
+      <span class="lab">Negozio</span>
+      <input id="f-name" type="text" autocomplete="off" placeholder="Esselunga, Tesco, IKEA…">
+    </label>
+    <div id="suggest" class="suggest" hidden></div>
+
+    <label class="field">
+      <span class="lab">Programma o descrizione</span>
+      <input id="f-sub" type="text" autocomplete="off" placeholder="Fìdaty, Clubcard, Family…">
+    </label>
+
+    <div class="field">
+      <span class="lab">Colore</span>
+      <div id="f-color" class="swatches"></div>
+    </div>
+
+    <label class="field">
+      <span class="lab">Nota</span>
+      <input id="f-note" type="text" autocomplete="off" placeholder="Punti in scadenza, intestatario…">
+    </label>
+
+    <div class="preview-wrap">
+      <span class="lab">Anteprima</span>
+      <div id="preview-panel" class="code-panel preview">
+        <canvas id="preview-canvas"></canvas>
+      </div>
+      <p id="preview-msg" class="hint"></p>
+    </div>
+  </div>
+
+  <div class="card-actions">
+    <button id="btn-save" class="btn primary grow">Salva tessera</button>
+  </div>
+</section>
+
+<!-- SCANSIONE -->
+<section id="view-scan" class="view" hidden>
+  <video id="scan-video" playsinline muted autoplay></video>
+  <div class="scan-shade"></div>
+  <div class="reticle">
+    <i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i>
+  </div>
+  <div class="safe-top"></div>
+  <div class="scan-top">
+    <button id="btn-scan-close" class="icon-btn glass" aria-label="Chiudi">
+      <svg viewBox="0 0 24 24" class="i20"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <span class="scan-title">Inquadra il codice</span>
+    <span class="icon-btn ghost-space"></span>
+  </div>
+  <p id="scan-msg" class="scan-msg">Tieni la tessera piatta e ben illuminata.</p>
+  <div id="scan-hit" class="scan-hit" hidden>
+    <span class="tick">
+      <svg viewBox="0 0 24 24" class="i16 thick"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+    </span>
+    <span>
+      <strong id="scan-hit-format"></strong>
+      <em id="scan-hit-code" class="mono"></em>
+    </span>
+  </div>
+  <div class="scan-foot">
+    <button id="btn-scan-use" class="btn primary big" hidden>Usa questo codice</button>
+    <div class="scan-alts">
+      <button id="btn-photo" class="btn ghost grow">
+        <svg viewBox="0 0 24 24" class="i16"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.8l1.3-2h6.8l1.3 2h1.8A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.4"/></svg>
+        Scatta una foto
+      </button>
+      <button id="btn-manual" class="btn ghost grow">
+        <svg viewBox="0 0 24 24" class="i16"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h6"/></svg>
+        Digita a mano
+      </button>
+    </div>
+  </div>
+  <input id="photo-input" type="file" accept="image/*" capture="environment" hidden>
+</section>
+
+<!-- IMPOSTAZIONI E BACKUP -->
+<section id="view-settings" class="view" hidden>
+  <div class="safe-top"></div>
+  <nav class="navbar">
+    <button class="icon-btn" data-back aria-label="Indietro">
+      <svg viewBox="0 0 24 24" class="i22"><path d="m15 5-7 7 7 7"/></svg>
+    </button>
+    <span class="muted small">Impostazioni</span>
+    <span class="icon-btn ghost-space"></span>
+  </nav>
+
+  <div class="settings-body">
+    <h1>Backup</h1>
+    <p class="muted">
+      Le tessere sono salvate solo su questo telefono. iOS può cancellare i dati
+      dei siti che non apri da tempo: esporta ogni tanto, così non perdi nulla.
+    </p>
+    <div class="stack">
+      <button id="btn-export" class="btn primary">Esporta backup</button>
+      <button id="btn-import" class="btn ghost">Importa da file</button>
+      <input id="import-input" type="file" accept="application/json,.json" hidden>
+    </div>
+
+    <h2>Spazio</h2>
+    <p id="storage-line" class="muted small">—</p>
+
+    <h2>Installazione</h2>
+    <p class="muted small" id="install-hint">
+      Su iPhone: tocca Condividi in Safari, poi «Aggiungi a schermata Home».
+      Aperta dalla home, l’app funziona a tutto schermo e anche offline.
+    </p>
+
+    <h2>Versione</h2>
+    <p class="muted small mono" id="version-line">—</p>
+  </div>
+</section>
+
+<div id="toast" class="toast" hidden></div>
+
+<div id="sheet" class="sheet" hidden>
+  <div class="sheet-panel">
+    <button class="sheet-item" data-act="edit">Modifica tessera</button>
+    <button class="sheet-item danger" data-act="delete">Elimina tessera</button>
+    <button class="sheet-item cancel" data-act="cancel">Annulla</button>
+  </div>
+</div>
+
+<script src="vendor/bwip-js.min.js"></script>
+<script src="vendor/zxing.min.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
