@@ -5,7 +5,7 @@ import {
   tryRenderCode, startLiveScan, scanImageFile, pronteGenerazione,
 } from './codes.js';
 
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 const PRIMARY_FORMATS = ['ean13', 'code128', 'code39', 'itf', 'qrcode', 'aztec'];
 
 const $ = (id) => document.getElementById(id);
@@ -207,12 +207,6 @@ $('grid').addEventListener('click', (e) => {
   const tile = e.target.closest('.tile');
   if (!tile) return;
   openCard(tile.dataset.id);
-});
-
-// L'intera riga porta il fuoco al campo: se per qualsiasi motivo il tocco non
-// centra l'input, la ricerca si apre lo stesso.
-document.querySelector('.search').addEventListener('click', (e) => {
-  if (e.target !== $('q')) $('q').focus();
 });
 
 let filtroTimer = null;
@@ -544,8 +538,10 @@ $('btn-save').addEventListener('click', save);
 async function save() {
   const name = $('f-name').value.trim();
   const code = $('f-code').value.trim();
-  if (!code) { toast('Manca il numero della tessera.', true); $('f-code').focus(); return; }
-  if (!name) { toast('Dai un nome alla tessera.', true); $('f-name').focus(); return; }
+  // Nessun focus() nemmeno qui: l'avviso dice già cosa manca, e su iOS
+  // rubare il fuoco lascerebbe solo un cursore senza tastiera.
+  if (!code) { toast('Manca il numero della tessera.', true); return; }
+  if (!name) { toast('Dai un nome alla tessera.', true); return; }
 
   const v = validate(code, draft.format);
   if (!v.ok) { toast(v.error, true); return; }
@@ -591,7 +587,9 @@ let pendingScan = null;
 
 $('btn-scan').addEventListener('click', () => navigate({ view: 'scan' }));
 $('btn-scan-close').addEventListener('click', back);
-$('btn-manual').addEventListener('click', () => { back(); setTimeout(() => $('f-code').focus(), 250); });
+// Niente focus() programmatico: su iOS non apre la tastiera e lascia solo il
+// cursore lampeggiante. Si torna al modulo e il campo lo tocca l'utente.
+$('btn-manual').addEventListener('click', () => back());
 $('btn-photo').addEventListener('click', () => $('photo-input').click());
 
 $('photo-input').addEventListener('change', async (e) => {

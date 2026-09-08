@@ -70,10 +70,35 @@ qualunque hosting che serva HTTPS.
 
 1. Apri l'indirizzo **in Safari** (non Chrome: solo Safari può installare).
 2. Tocca **Condividi** → **Aggiungi a schermata Home**.
-3. Aprila dall'icona sulla home, non dal browser.
+3. Aprila dall'icona sulla home.
 
-Aperta così, l'app va a tutto schermo, funziona senza rete e può tenere lo
-schermo acceso mentre mostri il codice alla cassa.
+L'icona apre l'app dentro Safari, non come app isolata a tutto schermo. È una
+scelta, non una dimenticanza — il perché è qui sotto.
+
+### Perché non è a tutto schermo
+
+Su alcuni iPhone, dentro le app installate come «app isolata» WebKit smette di
+aprire la tastiera: il cursore compare nel campo ma non si può scrivere, e alle
+aperture successive non compare nemmeno il cursore. È un difetto di sistema,
+non dell'app: si riproduce anche con una pagina HTML nuda con dentro un solo
+campo di testo, senza librerie né service worker. È segnalato a WebKit
+(bug 279904) e a oggi non è risolto.
+
+Quindi la modalità a tutto schermo è disattivata: l'icona apre l'app in Safari,
+dove tutto funziona. Cosa si perde: la barra di Safari resta visibile, e non
+funziona più il Wake Lock, cioè lo schermo può spegnersi mentre mostri il
+codice alla cassa (si può alzare il timeout in Impostazioni → Schermo e
+luminosità → Blocco automatico).
+
+**Per riattivarla**, se un aggiornamento di iOS sistema il difetto:
+
+1. in `index.html`, togli i commenti dalla riga
+   `<meta name="apple-mobile-web-app-capable" content="yes">`;
+2. in `manifest.webmanifest`, rimetti `"display": "standalone"`;
+3. cambia la versione in `sw.js`, ripubblica, e ri-aggiungi l'app alla home.
+
+Nello zip c'è anche `prova-tastiera.html`: aggiungila alla home e tocca i due
+campi per verificare in dieci secondi se il difetto c'è ancora.
 
 ## Come funziona
 
@@ -133,6 +158,7 @@ catalog.js               catene note: colore e formato tipico
 sw.js                    service worker: fa funzionare l'app offline
 manifest.webmanifest     nome, icone, avvio a tutto schermo
 icons/                   icone per home screen e installazione
+prova-tastiera.html      pagina di diagnosi del difetto iOS sulla tastiera
 vendor/bwip-js.min.js    disegna i codici (tutti i formati)
 vendor/zxing.min.js      legge i codici da fotocamera e foto
 ```

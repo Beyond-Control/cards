@@ -9,7 +9,15 @@
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<!-- MODALITÀ A TUTTO SCHERMO — disattivata di proposito.
+     Con questa riga attiva, "Aggiungi a schermata Home" crea un'app isolata,
+     e su alcuni iPhone WebKit non apre più la tastiera al suo interno: è un
+     difetto di sistema, non dell'app (lo mostra anche una pagina HTML nuda).
+     Disattivata, l'icona sulla home apre la stessa app dentro Safari: la
+     tastiera funziona, ma si perde il fatto che lo schermo resti acceso.
+     Per riattivarla: togli i commenti qui sotto e rimetti "standalone"
+     in manifest.webmanifest. -->
+<!-- <meta name="apple-mobile-web-app-capable" content="yes"> -->
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Tessere">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -282,7 +290,9 @@
     <h2>Installazione</h2>
     <p class="muted small" id="install-hint">
       Su iPhone: tocca Condividi in Safari, poi «Aggiungi a schermata Home».
-      Aperta dalla home, l’app funziona a tutto schermo e anche offline.
+      L’icona apre l’app dentro Safari, dove tutto funziona, e continua a
+      funzionare anche senza rete. La modalità a tutto schermo è disattivata
+      di proposito: su alcuni iPhone impedisce alla tastiera di comparire.
     </p>
 
     <h2>Versione</h2>

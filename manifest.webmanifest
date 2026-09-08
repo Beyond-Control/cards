@@ -4,7 +4,7 @@
   "description": "Le tue carte fedeltà, italiane ed estere, sempre a portata di cassa.",
   "start_url": "./",
   "scope": "./",
-  "display": "standalone",
+  "display": "browser",
   "orientation": "portrait",
   "background_color": "#0E0E12",
   "theme_color": "#0E0E12",
